@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Studio-X v2 | Thinking Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --navy: #12384C; --teal: #79BFA8; --soft-cyan: #A7D6CF;
+    --gold: #AE953B; --bg: #F5F7F8; --border: #E2E8EF;
+    --body: #1a1a1a; --muted: #64748B; --white: #ffffff;
+    --orange: #D47A2A; --ann-blue: #163F9A;
+  }
+  body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: var(--body); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* Header */
+  header { background: var(--navy); padding: 0 1.5rem; height: 52px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .logo { color: var(--white); font-size: 16px; font-weight: 700; letter-spacing: 0.05em; display: flex; align-items: center; gap: 8px; }
+  .logo-accent { color: var(--teal); }
+
+  /* Mode Switcher */
+  .mode-bar { background: var(--white); border-bottom: 1px solid var(--border); padding: 8px 1.5rem; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .mode-label { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0.05em; }
+  .mode-btn { border: 1.5px solid var(--border); background: var(--white); border-radius: 20px; padding: 5px 16px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: 'Noto Sans JP', sans-serif; color: var(--muted); transition: all 0.15s; }
+  .mode-btn.active { background: var(--navy); color: var(--white); border-color: var(--navy); }
+  .mode-btn:hover:not(.active) { border-color: var(--teal); color: var(--navy); }
+
+  /* API Key Bar */
+  #api-bar { background: #fff8e6; border-bottom: 1px solid #f0d88a; padding: 7px 1.5rem; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  #api-bar label { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  #api-key-input { flex: 1; border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; font-size: 12px; font-family: monospace; background: var(--white); max-width: 400px; }
+  #api-key-input:focus { outline: 2px solid var(--teal); }
+  .save-btn { background: var(--teal); color: var(--white); border: none; border-radius: 6px; padding: 4px 14px; font-size: 12px; cursor: pointer; font-family: 'Noto Sans JP', sans-serif; font-weight: 500; }
+  #api-status { font-size: 11px; color: var(--muted); }
+
+  /* Main */
+  .main { display: grid; grid-template-columns: 240px 1fr 1fr; flex: 1; overflow: hidden; }
+  .pane { border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+  .pane:last-child { border-right: none; }
+  .pane-header { background: var(--white); border-bottom: 1px solid var(--border); padding: 9px 14px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .pane-title { font-size: 11px; font-weight: 700; color: var(--navy); letter-spacing: 0.08em; text-transform: uppercase; }
+  .pane-body { flex: 1; overflow-y: auto; padding: 12px; }
+
+  /* Memo cards */
+  .memo-card { background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; margin-bottom: 7px; cursor: pointer; transition: border-color 0.15s; position: relative; }
+  .memo-card:hover { border-color: var(--teal); }
+  .memo-card.active { border-color: var(--teal); border-width: 2px; background: #f0faf7; }
+  .memo-card-title { font-size: 11px; font-weight: 700; color: var(--navy); margin-bottom: 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; padding-right: 18px; }
+  .memo-card-preview { font-size: 10px; color: var(--muted); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .memo-card-meta { display: flex; align-items: center; gap: 5px; margin-top: 4px; }
+  .memo-date { font-size: 10px; color: #aaa; }
+  .memo-mode-tag { font-size: 9px; padding: 1px 5px; border-radius: 3px; font-weight: 700; }
+  .tag-sns { background: #e8f4f8; color: var(--ann-blue); }
+  .tag-mtg { background: #edf7f2; color: #2e7d5e; }
+  .delete-btn { position: absolute; top: 7px; right: 7px; background: none; border: none; color: #ccc; cursor: pointer; font-size: 13px; padding: 2px; }
+  .delete-btn:hover { color: #e74c3c; }
+  .new-memo-btn { width: 100%; background: var(--navy); color: var(--white); border: none; border-radius: 8px; padding: 8px; font-size: 12px; font-weight: 700; cursor: pointer; margin-bottom: 10px; font-family: 'Noto Sans JP', sans-serif; transition: background 0.15s; }
+  .new-memo-btn:hover { background: #1a4d65; }
+
+  /* Workbench */
+  .workbench-body { padding: 12px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; flex: 1; }
+  textarea#memo-input { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 13px; font-family: 'Noto Sans JP', sans-serif; resize: vertical; min-height: 130px; color: var(--body); line-height: 1.7; background: var(--white); }
+  textarea#memo-input:focus { outline: 2px solid var(--teal); border-color: transparent; }
+
+  .control-section { background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: 11px; }
+  .control-label { font-size: 11px; font-weight: 700; color: var(--navy); margin-bottom: 7px; letter-spacing: 0.04em; }
+
+  /* SNS Controls */
+  .struct-grid, .format-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  .struct-btn, .format-btn { border: 1px solid var(--border); background: var(--white); border-radius: 6px; padding: 6px 5px; font-size: 11px; cursor: pointer; font-family: 'Noto Sans JP', sans-serif; color: var(--muted); font-weight: 500; transition: all 0.15s; text-align: center; }
+  .struct-btn.active { background: var(--teal); color: var(--white); border-color: var(--teal); }
+  .format-btn.active { background: var(--navy); color: var(--white); border-color: var(--navy); }
+  .struct-btn:hover:not(.active), .format-btn:hover:not(.active) { border-color: var(--teal); color: var(--navy); }
+
+  .slider-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .slider-name { font-size: 11px; color: var(--muted); width: 40px; flex-shrink: 0; }
+  .slider-row input[type=range] { flex: 1; accent-color: var(--teal); cursor: pointer; }
+  .slider-labels { display: flex; justify-content: space-between; font-size: 10px; color: #aaa; margin-top: -4px; margin-bottom: 5px; }
+
+  /* MTG Controls */
+  .mtg-fields { display: flex; flex-direction: column; gap: 7px; }
+  .mtg-field { display: flex; align-items: center; gap: 8px; }
+  .mtg-field label { font-size: 11px; color: var(--muted); width: 60px; flex-shrink: 0; }
+  .mtg-field input { flex: 1; border: 1px solid var(--border); border-radius: 5px; padding: 4px 8px; font-size: 12px; font-family: 'Noto Sans JP', sans-serif; background: var(--white); }
+  .mtg-field input:focus { outline: 1.5px solid var(--teal); }
+
+  /* Convert / Save */
+  .convert-btn { width: 100%; background: var(--orange); color: var(--white); border: none; border-radius: 8px; padding: 12px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: 'Noto Sans JP', sans-serif; transition: background 0.15s; letter-spacing: 0.03em; }
+  .convert-btn:hover { background: #b8661e; }
+  .convert-btn:disabled { background: #ccc; cursor: not-allowed; }
+  .save-memo-btn { width: 100%; background: var(--white); color: var(--navy); border: 1px solid var(--navy); border-radius: 8px; padding: 7px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: 'Noto Sans JP', sans-serif; transition: all 0.15s; }
+  .save-memo-btn:hover { background: var(--navy); color: var(--white); }
+
+  /* Right Pane */
+  .tab-bar { display: flex; border-bottom: 1px solid var(--border); background: var(--white); flex-shrink: 0; overflow-x: auto; }
+  .tab-btn { flex: 1; min-width: 60px; border: none; background: none; padding: 9px 5px; font-size: 11px; font-weight: 700; cursor: pointer; color: var(--muted); font-family: 'Noto Sans JP', sans-serif; border-bottom: 2px solid transparent; transition: all 0.15s; white-space: nowrap; }
+  .tab-btn.active { color: var(--navy); border-bottom-color: var(--teal); }
+
+  .output-pane { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+  .output-pane.active { display: flex; }
+  .output-frame { flex: 1; overflow-y: auto; padding: 14px; }
+
+  /* Output styles */
+  .x-preview { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 14px; max-width: 480px; margin: 0 auto; }
+  .x-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--teal); display: flex; align-items: center; justify-content: center; color: var(--white); font-weight: 700; font-size: 13px; flex-shrink: 0; }
+  .x-header { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+  .x-name { font-size: 13px; font-weight: 700; }
+  .x-handle { font-size: 11px; color: var(--muted); }
+  .x-content { font-size: 14px; line-height: 1.7; white-space: pre-wrap; word-break: break-all; }
+  .x-char-count { text-align: right; font-size: 11px; color: var(--muted); margin-top: 7px; }
+  .x-char-count.over { color: #e74c3c; }
+
+  .note-preview { background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: 18px; font-size: 14px; line-height: 1.9; }
+  .note-preview h1 { font-size: 18px; font-weight: 700; margin-bottom: 12px; color: var(--navy); }
+  .note-preview h2 { font-size: 15px; font-weight: 700; margin: 12px 0 5px; color: var(--navy); border-left: 3px solid var(--teal); padding-left: 8px; }
+  .note-preview h3 { font-size: 13px; font-weight: 700; margin: 10px 0 4px; color: var(--navy); }
+  .note-preview p { margin-bottom: 8px; }
+  .note-preview li { margin-left: 16px; margin-bottom: 3px; }
+
+  /* 議事録スタイル */
+  .minutes-preview { background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: 18px; font-size: 13px; line-height: 1.8; }
+  .minutes-section { margin-bottom: 18px; }
+  .minutes-section-title { background: var(--navy); color: var(--white); padding: 5px 12px; border-radius: 4px; font-size: 12px; font-weight: 700; margin-bottom: 10px; display: inline-block; }
+  .minutes-meta { display: grid; grid-template-columns: 80px 1fr; gap: 4px 8px; margin-bottom: 14px; font-size: 12px; }
+  .minutes-meta-label { color: var(--muted); font-weight: 700; }
+
+  /* Taskリスト */
+  .task-preview { background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: 18px; }
+  .task-item { border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; border-left: 3px solid var(--teal); }
+  .task-header { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; flex-wrap: wrap; }
+  .task-num { background: var(--navy); color: var(--white); border-radius: 3px; padding: 1px 6px; font-size: 10px; font-weight: 700; }
+  .task-owner { font-size: 12px; font-weight: 700; color: var(--navy); }
+  .task-deadline { font-size: 11px; color: var(--orange); font-weight: 700; }
+  .task-content { font-size: 13px; margin-bottom: 4px; }
+  .task-dod { font-size: 11px; color: var(--muted); padding-left: 8px; border-left: 2px solid var(--border); }
+
+  .md-preview { background: #1e1e2e; border-radius: 8px; padding: 14px; font-family: 'Courier New', monospace; font-size: 12px; color: #cdd6f4; line-height: 1.7; white-space: pre-wrap; word-break: break-all; }
+
+  .copy-bar { padding: 9px 14px; background: var(--white); border-top: 1px solid var(--border); flex-shrink: 0; display: flex; gap: 7px; }
+  .copy-btn { flex: 1; background: var(--navy); color: var(--white); border: none; border-radius: 6px; padding: 7px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: 'Noto Sans JP', sans-serif; transition: background 0.15s; }
+  .copy-btn:hover { background: #1a4d65; }
+
+  /* Loading / Toast */
+  .loading-overlay { position: fixed; inset: 0; background: rgba(18,56,76,0.5); display: none; align-items: center; justify-content: center; z-index: 999; }
+  .loading-box { background: var(--white); border-radius: 12px; padding: 26px 34px; text-align: center; }
+  .spinner { width: 34px; height: 34px; border: 3px solid var(--border); border-top-color: var(--teal); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 10px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 12px; color: var(--muted); }
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--navy); color: var(--white); padding: 9px 18px; border-radius: 18px; font-size: 12px; z-index: 1000; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  .empty-state { display: flex; align-items: center; justify-content: center; height: 100%; flex-direction: column; gap: 8px; color: var(--muted); font-size: 13px; }
+  .empty-icon { font-size: 28px; opacity: 0.3; }
+
+  /* Mode panels */
+  .mode-panel { display: none; }
+  .mode-panel.active { display: block; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><span class="logo-accent">◆</span> Studio-X <span style="color:var(--soft-cyan);font-weight:400;font-size:11px;margin-left:4px">v2 | Thinking Studio</span></div>
+  <div style="color:var(--soft-cyan);font-size:11px">混沌（メモ）を資産（アウトプット）へ</div>
+</header>
+
+<!-- Mode Switcher -->
+<div class="mode-bar">
+  <span class="mode-label">MODE</span>
+  <button class="mode-btn active" onclick="switchMode('sns')">📣 SNSモード</button>
+  <button class="mode-btn" onclick="switchMode('mtg')">📋 議事録モード</button>
+</div>
+
+<!-- API Key Bar -->
+<div id="api-bar">
+  <label>🔑 Gemini API Key</label>
+  <input type="password" id="api-key-input" placeholder="AIza..." />
+  <button class="save-btn" onclick="saveApiKey()">保存</button>
+  <span id="api-status">未設定</span>
+</div>
+
+<div class="main">
+
+  <!-- LEFT: Inbox -->
+  <div class="pane">
+    <div class="pane-header">
+      <span class="pane-title">📥 Inbox</span>
+      <span style="font-size:10px;color:var(--muted)" id="memo-count">0件</span>
+    </div>
+    <div class="pane-body">
+      <button class="new-memo-btn" onclick="newMemo()">＋ 新しいメモ</button>
+      <div id="memo-list"></div>
+    </div>
+  </div>
+
+  <!-- CENTER: Workbench -->
+  <div class="pane">
+    <div class="pane-header"><span class="pane-title">⚙️ Workbench</span></div>
+    <div class="workbench-body">
+
+      <textarea id="memo-input" placeholder="ここにメモを入力..."></textarea>
+
+      <!-- SNS Controls -->
+      <div id="sns-controls" class="mode-panel active">
+        <div class="control-section" style="margin-bottom:10px">
+          <div class="control-label">📐 構造化フレームワーク</div>
+          <div class="struct-grid">
+            <button class="struct-btn active" onclick="selectStruct(this,'PREP')">PREP法</button>
+            <button class="struct-btn" onclick="selectStruct(this,'SDS')">SDS法</button>
+            <button class="struct-btn" onclick="selectStruct(this,'WHY')">WHY→HOW</button>
+            <button class="struct-btn" onclick="selectStruct(this,'STAR')">STAR法</button>
+            <button class="struct-btn" onclick="selectStruct(this,'問題解決')">問題解決型</button>
+            <button class="struct-btn" onclick="selectStruct(this,'自由')">自由変換</button>
+          </div>
+        </div>
+        <div class="control-section" style="margin-bottom:10px">
+          <div class="control-label">🎛️ マジック・スライダー</div>
+          <div class="slider-row"><span class="slider-name">トーン</span><input type="range" id="tone" min="1" max="5" value="3"/></div>
+          <div class="slider-labels"><span>丁寧</span><span>ラフ</span></div>
+          <div class="slider-row"><span class="slider-name">粒度</span><input type="range" id="length" min="1" max="5" value="3"/></div>
+          <div class="slider-labels"><span>短い</span><span>長い</span></div>
+        </div>
+        <div class="control-section" style="margin-bottom:10px">
+          <div class="control-label">📤 出力フォーマット</div>
+          <div class="format-grid">
+            <button class="format-btn active" onclick="selectFormat(this,'x')">X（ポスト）</button>
+            <button class="format-btn" onclick="selectFormat(this,'note')">note記事</button>
+            <button class="format-btn active" onclick="selectFormat(this,'md')">Markdown</button>
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:5px">複数選択可</div>
+        </div>
+      </div>
+
+      <!-- MTG Controls -->
+      <div id="mtg-controls" class="mode-panel">
+        <div class="control-section" style="margin-bottom:10px">
+          <div class="control-label">📋 MTG基本情報（任意）</div>
+          <div class="mtg-fields">
+            <div class="mtg-field"><label>MTG名称</label><input type="text" id="mtg-name" placeholder="例）週次定例"/></div>
+            <div class="mtg-field"><label>日時</label><input type="text" id="mtg-date" placeholder="例）2025/4/20 10:00"/></div>
+            <div class="mtg-field"><label>参加者</label><input type="text" id="mtg-members" placeholder="例）本村、山田、河上"/></div>
+          </div>
+        </div>
+        <div class="control-section" style="margin-bottom:10px">
+          <div class="control-label">📤 出力フォーマット</div>
+          <div class="format-grid">
+            <button class="format-btn active" onclick="selectFormat(this,'minutes')">議事録</button>
+            <button class="format-btn active" onclick="selectFormat(this,'tasks')">Taskリスト</button>
+            <button class="format-btn" onclick="selectFormat(this,'note')">note記事</button>
+            <button class="format-btn" onclick="selectFormat(this,'x')">X投稿</button>
+            <button class="format-btn" onclick="selectFormat(this,'md')">Markdown</button>
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:5px">複数選択可</div>
+        </div>
+      </div>
+
+      <button class="save-memo-btn" onclick="saveMemo()">💾 メモを保存</button>
+      <button class="convert-btn" id="convert-btn" onclick="convertMemo()">✦ 変換する</button>
+    </div>
+  </div>
+
+  <!-- RIGHT: Asset -->
+  <div class="pane" style="display:flex;flex-direction:column">
+    <!-- SNS tabs -->
+    <div id="sns-tabs" class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab(this,'tab-x')">X</button>
+      <button class="tab-btn" onclick="switchTab(this,'tab-note')">note</button>
+      <button class="tab-btn" onclick="switchTab(this,'tab-md')">Markdown</button>
+    </div>
+    <!-- MTG tabs -->
+    <div id="mtg-tabs" class="tab-bar" style="display:none">
+      <button class="tab-btn active" onclick="switchTab(this,'tab-minutes')">議事録</button>
+      <button class="tab-btn" onclick="switchTab(this,'tab-tasks')">Taskリスト</button>
+      <button class="tab-btn" onclick="switchTab(this,'tab-note')">note</button>
+      <button class="tab-btn" onclick="switchTab(this,'tab-x')">X</button>
+      <button class="tab-btn" onclick="switchTab(this,'tab-md')">MD</button>
+    </div>
+
+    <!-- 議事録 tab -->
+    <div id="tab-minutes" class="output-pane" style="display:none">
+      <div class="output-frame">
+        <div id="minutes-preview" class="minutes-preview">
+          <div class="empty-state"><div class="empty-icon">📋</div><div>変換するとここに表示されます</div></div>
+        </div>
+      </div>
+      <div class="copy-bar"><button class="copy-btn" onclick="copyOutput('minutes')">📋 コピー</button></div>
+    </div>
+
+    <!-- Task tab -->
+    <div id="tab-tasks" class="output-pane" style="display:none">
+      <div class="output-frame">
+        <div id="tasks-preview" class="task-preview">
+          <div class="empty-state"><div class="empty-icon">✅</div><div>変換するとここに表示されます</div></div>
+        </div>
+      </div>
+      <div class="copy-bar"><button class="copy-btn" onclick="copyOutput('tasks')">📋 コピー</button></div>
+    </div>
+
+    <!-- X tab -->
+    <div id="tab-x" class="output-pane active">
+      <div class="output-frame">
+        <div class="x-preview" id="x-preview">
+          <div class="empty-state"><div class="empty-icon">✦</div><div>変換するとここに表示されます</div></div>
+        </div>
+      </div>
+      <div class="copy-bar"><button class="copy-btn" onclick="copyOutput('x')">📋 コピー</button></div>
+    </div>
+
+    <!-- note tab -->
+    <div id="tab-note" class="output-pane">
+      <div class="output-frame">
+        <div class="note-preview" id="note-preview">
+          <div class="empty-state"><div class="empty-icon">✦</div><div>変換するとここに表示されます</div></div>
+        </div>
+      </div>
+      <div class="copy-bar"><button class="copy-btn" onclick="copyOutput('note')">📋 コピー</button></div>
+    </div>
+
+    <!-- Markdown tab -->
+    <div id="tab-md" class="output-pane">
+      <div class="output-frame">
+        <div class="md-preview" id="md-preview">変換するとここに表示されます</div>
+      </div>
+      <div class="copy-bar"><button class="copy-btn" onclick="copyOutput('md')">📋 コピー</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="loading-overlay" id="loading" style="display:none">
+  <div class="loading-box"><div class="spinner"></div><div class="loading-text">AIが変換中...</div></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+  let memos = JSON.parse(localStorage.getItem('sx-memos') || '[]');
+  let currentMemoId = null;
+  let currentMode = 'sns';
+  let selectedStruct = 'PREP';
+  let selectedFormats = new Set(['x', 'md']);
+  let outputs = { x: '', note: '', md: '', minutes: '', tasks: '' };
+
+  // ===== MODE =====
+  function switchMode(mode) {
+    currentMode = mode;
+    document.querySelectorAll('.mode-btn').forEach((b, i) => {
+      b.classList.toggle('active', (i === 0 && mode === 'sns') || (i === 1 && mode === 'mtg'));
+    });
+    document.getElementById('sns-controls').classList.toggle('active', mode === 'sns');
+    document.getElementById('mtg-controls').classList.toggle('active', mode === 'mtg');
+    document.getElementById('sns-tabs').style.display = mode === 'sns' ? 'flex' : 'none';
+    document.getElementById('mtg-tabs').style.display = mode === 'mtg' ? 'flex' : 'none';
+
+    // Reset formats
+    selectedFormats.clear();
+    document.querySelectorAll('.format-btn').forEach(b => b.classList.remove('active'));
+
+    if (mode === 'sns') {
+      selectedFormats = new Set(['x', 'md']);
+      document.getElementById('memo-input').placeholder = '思考・アイデア・気づきをここに入力...\n\n例）今日の商談で気づいたこと、読んだ記事の感想';
+      // activate default tabs
+      document.querySelectorAll('#sns-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('#sns-tabs .tab-btn')[0].classList.add('active');
+      showOnlyTab('tab-x');
+    } else {
+      selectedFormats = new Set(['minutes', 'tasks']);
+      document.getElementById('memo-input').placeholder = '会議のメモをここにざっくり入力...\n\n例）\n・コスト削減を優先する方針に決定\n・山田さんが来週までにベンダー比較表を作る\n・リリース日は未定、来週再確認\n・次回MTG 4/27 10時';
+      document.querySelectorAll('#mtg-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('#mtg-tabs .tab-btn')[0].classList.add('active');
+      showOnlyTab('tab-minutes');
+    }
+
+    // sync format btn active state
+    document.querySelectorAll('.format-btn').forEach(btn => {
+      const fmt = btn.getAttribute('onclick').match(/'(\w+)'\)/)?.[1];
+      if (fmt && selectedFormats.has(fmt)) btn.classList.add('active');
+    });
+  }
+
+  function showOnlyTab(activeId) {
+    ['tab-x','tab-note','tab-md','tab-minutes','tab-tasks'].forEach(id => {
+      const el = document.getElementById(id);
+      el.classList.remove('active');
+      el.style.display = 'none';
+    });
+    const active = document.getElementById(activeId);
+    active.style.display = 'flex';
+    active.classList.add('active');
+  }
+
+  // ===== API KEY =====
+  function saveApiKey() {
+    const key = document.getElementById('api-key-input').value.trim();
+    if (!key.startsWith('AIza')) { showToast('❌ APIキーの形式が違います（AIza...で始まるもの）'); return; }
+    localStorage.setItem('sx-apikey', key);
+    document.getElementById('api-status').textContent = '✅ 設定済み';
+    document.getElementById('api-status').style.color = '#2e7d5e';
+    showToast('✅ APIキーを保存しました');
+  }
+  function loadApiKey() {
+    const key = localStorage.getItem('sx-apikey');
+    if (key) {
+      document.getElementById('api-key-input').value = key;
+      document.getElementById('api-status').textContent = '✅ 設定済み';
+      document.getElementById('api-status').style.color = '#2e7d5e';
+    }
+  }
+
+  // ===== MEMO =====
+  function newMemo() {
+    currentMemoId = null;
+    document.getElementById('memo-input').value = '';
+    document.querySelectorAll('.memo-card').forEach(c => c.classList.remove('active'));
+  }
+  function saveMemo() {
+    const text = document.getElementById('memo-input').value.trim();
+    if (!text) { showToast('⚠️ メモが空です'); return; }
+    const title = text.split('\n')[0].slice(0, 28) || '無題';
+    const now = new Date();
+    if (currentMemoId) {
+      const idx = memos.findIndex(m => m.id === currentMemoId);
+      if (idx > -1) { memos[idx].text = text; memos[idx].title = title; memos[idx].mode = currentMode; }
+    } else {
+      const memo = { id: Date.now().toString(), text, title, mode: currentMode, createdAt: now.toISOString() };
+      memos.unshift(memo);
+      currentMemoId = memo.id;
+    }
+    localStorage.setItem('sx-memos', JSON.stringify(memos));
+    renderMemos();
+    showToast('💾 保存しました');
+  }
+  function loadMemo(id) {
+    const memo = memos.find(m => m.id === id);
+    if (!memo) return;
+    currentMemoId = id;
+    document.getElementById('memo-input').value = memo.text;
+    if (memo.mode) switchMode(memo.mode);
+    document.querySelectorAll('.memo-card').forEach(c => c.classList.toggle('active', c.dataset.id === id));
+  }
+  function deleteMemo(id, e) {
+    e.stopPropagation();
+    memos = memos.filter(m => m.id !== id);
+    localStorage.setItem('sx-memos', JSON.stringify(memos));
+    if (currentMemoId === id) { currentMemoId = null; document.getElementById('memo-input').value = ''; }
+    renderMemos();
+    showToast('🗑️ 削除しました');
+  }
+  function renderMemos() {
+    const list = document.getElementById('memo-list');
+    document.getElementById('memo-count').textContent = memos.length + '件';
+    if (!memos.length) {
+      list.innerHTML = '<div class="empty-state" style="height:auto;padding:16px 0"><div class="empty-icon">📝</div><div>メモがありません</div></div>';
+      return;
+    }
+    const now = Date.now();
+    list.innerHTML = memos.map(m => {
+      const age = (now - new Date(m.createdAt).getTime()) / (1000*60*60*24);
+      const fire = age > 7 ? '🔥' : '';
+      const date = new Date(m.createdAt).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' });
+      const tag = m.mode === 'mtg' ? '<span class="memo-mode-tag tag-mtg">議事録</span>' : '<span class="memo-mode-tag tag-sns">SNS</span>';
+      return `<div class="memo-card ${m.id === currentMemoId ? 'active' : ''}" data-id="${m.id}" onclick="loadMemo('${m.id}')">
+        <button class="delete-btn" onclick="deleteMemo('${m.id}',event)">×</button>
+        <div class="memo-card-title">${escHtml(m.title)}</div>
+        <div class="memo-card-preview">${escHtml(m.text)}</div>
+        <div class="memo-card-meta">${tag}<span class="memo-date">${date}</span>${fire}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // ===== CONTROLS =====
+  function selectStruct(btn, val) {
+    document.querySelectorAll('.struct-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active'); selectedStruct = val;
+  }
+  function selectFormat(btn, val) {
+    btn.classList.toggle('active');
+    if (btn.classList.contains('active')) selectedFormats.add(val);
+    else selectedFormats.delete(val);
+  }
+  function switchTab(btn, tabId) {
+    const bar = currentMode === 'sns' ? '#sns-tabs' : '#mtg-tabs';
+    document.querySelectorAll(bar + ' .tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    showOnlyTab(tabId);
+  }
+
+  // ===== CONVERT =====
+  async function convertMemo() {
+    const text = document.getElementById('memo-input').value.trim();
+    if (!text) { showToast('⚠️ メモを入力してください'); return; }
+    const apiKey = localStorage.getItem('sx-apikey');
+    if (!apiKey) { showToast('❌ APIキーを設定してください'); return; }
+    if (!selectedFormats.size) { showToast('⚠️ 出力フォーマットを選んでください'); return; }
+
+    let prompt = '';
+
+    if (currentMode === 'sns') {
+      const tone = document.getElementById('tone').value;
+      const length = document.getElementById('length').value;
+      const toneLabel = ['とても丁寧','丁寧','普通','ややカジュアル','ラフ'][tone-1];
+      const lengthLabel = ['とても短く','短め','標準','長め','とても長く'][length-1];
+      prompt = `あなたは優秀なコンテンツ編集者です。以下のメモを構造化して複数のフォーマットに変換してください。
+
+【元のメモ】
+${text}
+
+【設定】
+- 構造化フレームワーク: ${selectedStruct}法
+- トーン: ${toneLabel}
+- 長さ: ${lengthLabel}
+
+以下のJSON形式のみで返してください（コードブロック不要）:
+{"x":"X用投稿文140文字以内。不要なら空文字","note":"note用Markdown記事。不要なら空文字","md":"Markdown構造化メモ。不要なら空文字","minutes":"","tasks":""}`;
+    } else {
+      const mtgName = document.getElementById('mtg-name').value;
+      const mtgDate = document.getElementById('mtg-date').value;
+      const mtgMembers = document.getElementById('mtg-members').value;
+      prompt = `あなたは優秀な議事録作成者です。以下の会議メモから構造化された出力を生成してください。
+
+【会議メモ】
+${text}
+
+【MTG情報】
+- 名称: ${mtgName || '未入力'}
+- 日時: ${mtgDate || '未入力'}
+- 参加者: ${mtgMembers || '未入力'}
+
+以下のJSON形式のみで返してください（コードブロック不要）:
+{
+  "minutes": "以下の構造でMarkdown形式の議事録を作成:\\n# ■MTG基本情報\\n- MTG名称:\\n- 日時:\\n- 参加者:\\n\\n## 【1】決定事項\\n（意思決定された内容のみ箇条書き）\\n\\n## 【2】ToDo\\n（① オーナー/実務担当｜期日｜内容\\n→ 完了条件: xxxx\\n の形式で列挙）\\n\\n## 【3】議題と協議内容\\n（アジェンダ順に発言要約+結論）\\n\\n## 【4】保留事項・懸念点\\n（次回持ち越し論点）\\n\\n## 【5】次回会議\\n- 日時:\\n- 場所:",
+  "tasks": "以下の形式でTaskリストをMarkdown作成:\\n# Taskリスト\\n\\n（各Taskを以下の形式で）\\n## Task①\\n- オーナー/実務担当: \\n- 期限: \\n- 内容: \\n- 完了条件: ",
+  "note": "note用の記事（背景→課題→打ち手→実行→学びの構成）。不要なら空文字",
+  "x": "会議×実行設計をテーマにしたX投稿140文字以内。不要なら空文字",
+  "md": "会議内容のMarkdown構造化メモ。不要なら空文字"
+}`;
+    }
+
+    showLoading(true);
+    document.getElementById('convert-btn').disabled = true;
+
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { maxOutputTokens: 3000 }
+        })
+      });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || 'API Error'); }
+      const data = await res.json();
+      const raw = data.candidates[0].content.parts[0].text.trim().replace(/```json|```/g, '');
+      const parsed = JSON.parse(raw);
+      outputs = {
+        x: parsed.x || '',
+        note: parsed.note || '',
+        md: parsed.md || '',
+        minutes: parsed.minutes || '',
+        tasks: parsed.tasks || ''
+      };
+      renderOutputs();
+      showToast('✅ 変換完了！');
+    } catch(e) {
+      showToast('❌ エラー: ' + e.message);
+    } finally {
+      showLoading(false);
+      document.getElementById('convert-btn').disabled = false;
+    }
+  }
+
+  function renderOutputs() {
+    // X
+    const xEl = document.getElementById('x-preview');
+    if (outputs.x) {
+      const count = [...outputs.x].length;
+      xEl.innerHTML = `<div class="x-header"><div class="x-avatar">あ</div><div><div class="x-name">あなた</div><div class="x-handle">@yourhandle</div></div></div><div class="x-content">${escHtml(outputs.x)}</div><div class="x-char-count ${count>140?'over':''}">${count} / 140文字</div>`;
+    } else { xEl.innerHTML = '<div class="empty-state"><div class="empty-icon">✦</div><div>X用の出力なし</div></div>'; }
+
+    // note
+    const noteEl = document.getElementById('note-preview');
+    if (outputs.note) { noteEl.innerHTML = mdToHtml(outputs.note); }
+    else { noteEl.innerHTML = '<div class="empty-state"><div class="empty-icon">✦</div><div>note用の出力なし</div></div>'; }
+
+    // MD
+    document.getElementById('md-preview').textContent = outputs.md || '（Markdown出力なし）';
+
+    // 議事録
+    const minsEl = document.getElementById('minutes-preview');
+    if (outputs.minutes) { minsEl.innerHTML = mdToMinutesHtml(outputs.minutes); }
+    else { minsEl.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><div>議事録の出力なし</div></div>'; }
+
+    // Tasks
+    const tasksEl = document.getElementById('tasks-preview');
+    if (outputs.tasks) { tasksEl.innerHTML = mdToTasksHtml(outputs.tasks); }
+    else { tasksEl.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><div>Taskリストの出力なし</div></div>'; }
+  }
+
+  function mdToHtml(md) {
+    return md
+      .replace(/^# (.+)$/gm,'<h1>$1</h1>')
+      .replace(/^## (.+)$/gm,'<h2>$1</h2>')
+      .replace(/^### (.+)$/gm,'<h3>$1</h3>')
+      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+      .replace(/^[-*] (.+)$/gm,'<li>$1</li>')
+      .replace(/\n\n/g,'</p><p>')
+      .replace(/\n/g,'<br>') || md;
+  }
+
+  function mdToMinutesHtml(md) {
+    const lines = md.split('\n');
+    let html = '<div class="minutes-section">';
+    lines.forEach(line => {
+      if (line.startsWith('# ')) {
+        html += `<div style="font-size:16px;font-weight:700;color:var(--navy);margin-bottom:12px">${escHtml(line.slice(2))}</div>`;
+      } else if (line.startsWith('## ')) {
+        html += `</div><div class="minutes-section"><span class="minutes-section-title">${escHtml(line.slice(3))}</span>`;
+      } else if (line.startsWith('- ') || line.startsWith('* ')) {
+        html += `<div style="padding:3px 0 3px 12px;border-left:2px solid var(--border);margin:3px 0;font-size:13px">${escHtml(line.slice(2))}</div>`;
+      } else if (line.startsWith('→')) {
+        html += `<div style="padding:3px 0 3px 20px;color:var(--muted);font-size:12px">${escHtml(line)}</div>`;
+      } else if (line.match(/^[①②③④⑤⑥⑦⑧⑨⑩]/)) {
+        html += `<div style="background:#f0faf7;border-left:3px solid var(--teal);padding:6px 10px;margin:5px 0;border-radius:0 4px 4px 0;font-size:13px"><strong>${escHtml(line)}</strong></div>`;
+      } else if (line.trim()) {
+        html += `<div style="font-size:13px;padding:2px 0">${escHtml(line)}</div>`;
+      }
+    });
+    html += '</div>';
+    return html;
+  }
+
+  function mdToTasksHtml(md) {
+    const lines = md.split('\n');
+    let html = '';
+    let inTask = false;
+    let taskHtml = '';
+    let taskNum = 0;
+
+    lines.forEach(line => {
+      if (line.startsWith('## Task')) {
+        if (taskHtml) html += `<div class="task-item">${taskHtml}</div>`;
+        taskNum++;
+        taskHtml = `<div class="task-header"><span class="task-num">Task ${taskNum}</span></div>`;
+        inTask = true;
+      } else if (inTask && line.startsWith('- オーナー')) {
+        const val = line.replace('- オーナー/実務担当:', '').replace('- オーナー:', '').trim();
+        taskHtml += `<div class="task-header"><span class="task-owner">👤 ${escHtml(val)}</span></div>`;
+      } else if (inTask && line.startsWith('- 期限')) {
+        const val = line.replace('- 期限:', '').trim();
+        taskHtml += `<div class="task-header"><span class="task-deadline">📅 ${escHtml(val)}</span></div>`;
+      } else if (inTask && line.startsWith('- 内容')) {
+        const val = line.replace('- 内容:', '').trim();
+        taskHtml += `<div class="task-content">${escHtml(val)}</div>`;
+      } else if (inTask && line.startsWith('- 完了条件')) {
+        const val = line.replace('- 完了条件:', '').trim();
+        taskHtml += `<div class="task-dod">✓ 完了条件: ${escHtml(val)}</div>`;
+      } else if (inTask && line.match(/^[①②③④⑤⑥⑦⑧⑨]/)) {
+        if (taskHtml) html += `<div class="task-item">${taskHtml}</div>`;
+        taskNum++;
+        const parts = line.split('｜');
+        taskHtml = `<div class="task-header"><span class="task-num">Task ${taskNum}</span><span class="task-owner">👤 ${escHtml(parts[0] || '')}</span>${parts[1] ? `<span class="task-deadline">📅 ${escHtml(parts[1])}</span>` : ''}</div>`;
+        if (parts[2]) taskHtml += `<div class="task-content">${escHtml(parts[2])}</div>`;
+        inTask = true;
+      } else if (inTask && line.startsWith('→')) {
+        taskHtml += `<div class="task-dod">✓ ${escHtml(line.slice(1).trim())}</div>`;
+      }
+    });
+    if (taskHtml) html += `<div class="task-item">${taskHtml}</div>`;
+    return html || '<div class="empty-state"><div class="empty-icon">✅</div><div>Taskが見つかりませんでした</div></div>';
+  }
+
+  async function copyOutput(type) {
+    const text = outputs[type];
+    if (!text) { showToast('⚠️ コピーするものがありません'); return; }
+    try { await navigator.clipboard.writeText(text); showToast('📋 コピーしました！'); }
+    catch { showToast('❌ コピーに失敗しました'); }
+  }
+
+  function showLoading(show) { document.getElementById('loading').style.display = show ? 'flex' : 'none'; }
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // Init
+  loadApiKey();
+  renderMemos();
+</script>
+</body>
+</html>
